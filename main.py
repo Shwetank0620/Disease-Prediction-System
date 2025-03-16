@@ -1,26 +1,11 @@
-from flask import Flask, render_template
+from diseasepredictionsystem.preprocess import load_data, preprocess
+from diseasepredictionsystem.logging.logger import logging
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/heart')
-def heart():
-    return render_template('heart.html')
-
-@app.route('/diabetes')
-def diabetes():
-    return render_template('diabetes.html')
-
-@app.route('/lung-cancer')
-def lung_cancer():
-    return render_template('lung-cancer.html')
-
-@app.route('/breast-cancer')
-def breast_cancer():
-    return render_template('breast-cancer.html')
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8080)
+print(">>>>>> Data Preprocessing Started <<<<<<")
+logging.info("Data Preprocessing Pipeline Started")
+path = 'data/raw'
+data = load_data(path)
+for name in data.keys():
+    preprocess(df=data[name], file_name=name)
+logging.info("Data Preprocessing Pipeline Completed")
+print(">>>>>> Data Preprocessing Completed <<<<<<")
