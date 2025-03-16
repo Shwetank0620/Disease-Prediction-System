@@ -1,38 +1,35 @@
+import os
 import pandas as pd
-import glob
 from diseasepredictionsystem.logging.logger import logging
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
-
-def load_data(file_paths: str):
-    csv_files = glob.glob(f'{file_paths}/*.csv')
-    dfs = {}
-    for file in csv_files:
-        file_name = file.split("\\")[-1].split(".")[0]
-        dfs[file_name] = pd.read_csv(file)
-        logging.info(f"{file_name} Data File Loaded Successfully")
-    return dfs
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 
 def preprocess(df: pd.DataFrame, file_name: str) -> None:
-    if (len(df) - len(df.dropna())) > (0.1*len(df)):
-        df.fillna(df.mean())
+    if (len(df) - len(df.dropna())) > (0.1 * len(df)):
+        df.fillna(df.mean(), inplace=True)
     else:
         df.dropna(inplace=True)
     
     categorical_cols = df.select_dtypes(include=["object"]).columns
-    numerical_cols = df.select_dtypes(include=["int64", "float64"]).columns
 
-    if len(categorical_cols) > 0:
-        encoder = OneHotEncoder(sparse_output=False, drop="first")
-        encoded_df = pd.DataFrame(encoder.fit_transform(df[categorical_cols]))
-        encoded_df.columns = encoder.get_feature_names_out(categorical_cols)
+    for col in categorical_cols:
+        unique_vals = df[col].nunique()
+        
+        if unique_vals == 2:
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col]) 
+        else:
+            encoder = OneHotEncoder(sparse_output=False, drop="first")
+            encoded_array = encoder.fit_transform(df[[col]])
 
-        df = df.drop(columns=categorical_cols)
-        df = pd.concat([df, encoded_df], axis=1)
+            encoded_col_names = [f"{col}_{category}" for category in encoder.categories_[0][1:]]
+
+            encoded_df = pd.DataFrame(encoded_array, columns=encoded_col_names, index=df.index)
+
+            df = df.drop(columns=[col])
+            df = pd.concat([df, encoded_df], axis=1)
     
-    if len(numerical_cols) > 0:
-        scaler = MinMaxScaler()
-        df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
+    os.makedirs("data/processed", exist_ok=True)
     
-    df.to_csv(f"data/processed/{file_name}.csv")
+    df.to_csv(f"data/processed/{file_name}.csv", index=False)
 
     logging.info(f"{file_name} Data File Preprocessed Successfully")
